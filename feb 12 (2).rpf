@@ -1,0 +1,526 @@
+OPEN DATA "C:\Users\Nipun_Yarlagadda\Documents\time series\jan 24 sarasota labor data.xlsx"
+CALENDAR(M) 2000:1
+DATA(FORMAT=XLSX,ORG=COLUMNS) 2000:01 2023:11 LF emp unemp unemprt
+*forecast through May of 2024 (six months).  We have to define our dummy and time variables
+*variables through 2024:05
+SET SHUTDOWN * 2024:05 = T>=2020:04.AND.T<=2020:05
+SET TIME * 2024:05 = T
+SET TIMESQ * 2024:05 = TIME^2
+SET TIMECBD * 2024:05 = TIME^3
+*run the 3rd degree model we liked best last class
+LINREG(DEFINE=THIRDMODEL) EMP / RESIDS
+# Constant SHUTDOWN TIME TIMESQ TIMECBD
+
+Linear Regression - Estimation by Least Squares
+Dependent Variable EMP
+Monthly Data From 2000:01 To 2023:11
+Usable Observations                       287
+Degrees of Freedom                        282
+Centered R^2                        0.8374142
+R-Bar^2                             0.8351080
+Uncentered R^2                      0.9980589
+Mean of Dependent Variable       311780.65505
+Std Error of Dependent Variable   34332.15611
+Standard Error of Estimate        13941.22130
+Sum of Squared Residuals          54808857687
+Regression F(4,282)                  363.1173
+Significance Level of F             0.0000000
+Log Likelihood                     -3143.4410
+Durbin-Watson Statistic                0.0718
+
+    Variable                        Coeff      Std Error      T-Stat      Signif
+************************************************************************************
+1.  Constant                      271116.2641    3336.7046     81.25270  0.00000000
+2.  SHUTDOWN                      -51490.2610    9962.8533     -5.16822  0.00000045
+3.  TIME                             292.0284     100.2226      2.91380  0.00385660
+4.  TIMESQ                            -1.4725       0.8080     -1.82235  0.06946084
+5.  TIMECBD                            0.0067       0.0018      3.60988  0.00036242
+
+
+
+@regcrits
+
+Information Criteria
+AIC          21.947
+SBC          22.024
+Hannan-Quinn 21.978
+(log) FPE    21.947
+
+
+
+@regactfit
+*residuals normally distributed
+STATS RESIDS
+
+Statistics on Series RESIDS
+Monthly Data From 2000:01 To 2023:11
+Observations                   287
+Sample Mean              -0.000000      Variance              191639362.541402
+Standard Error        13843.386961      SE of Sample Mean           817.149295
+t-Statistic (Mean=0)     -0.000000      Signif Level (Mean=0)         1.000000
+Skewness                 -0.187419      Signif Level (Sk=0)           0.197243
+Kurtosis (excess)        -0.780129      Signif Level (Ku=0)           0.007700
+Jarque-Bera               8.958055      Signif Level (JB=0)           0.011344
+
+UFORECAST(FROM=2023:12,TO=2024:05,EQUATION=THIRDMODEL,STDERRS=EMPSTD,PRINT) EMPFORE
+
+ Entry       EMP
+ 2023:12 392085.8003
+ 2024:01 393190.2062
+ 2024:02 394303.2087
+ 2024:03 395424.8479
+ 2024:04 396555.1636
+ 2024:05 397694.1958
+
+
+
+*confidence intervals
+SET CIHI 2023:12 2024:05 = empfore+1.96*empstd
+SET CILO 2023:12 2024:05 = empfore-1.96*empstd
+*graph the forecast with their confidence intervals
+GRAPH(STYLE=LINE,HEADER="FOrecast with confidence intervals",KEY=ATTACHED) 3
+# EMPFORE
+# CIHI
+# CILO
+*constant growth rate model
+*taking the log of our series
+SET LEMP = LOG(EMP)
+LINREG LEMP
+# Constant TIME SHUTDOWN
+
+Linear Regression - Estimation by Least Squares
+Dependent Variable LEMP
+Monthly Data From 2000:01 To 2023:11
+Usable Observations                       287
+Degrees of Freedom                        284
+Centered R^2                        0.7624058
+R-Bar^2                             0.7607326
+Uncentered R^2                      0.9999826
+Mean of Dependent Variable       12.644132351
+Std Error of Dependent Variable   0.108522756
+Standard Error of Estimate        0.053083870
+Sum of Squared Residuals         0.8002828164
+Regression F(2,284)                  455.6577
+Significance Level of F             0.0000000
+Log Likelihood                       436.8707
+Durbin-Watson Statistic                0.0493
+
+    Variable                        Coeff      Std Error      T-Stat      Signif
+************************************************************************************
+1.  Constant                      12.47997100   0.00629010   1984.06601  0.00000000
+2.  TIME                           0.00114721   0.00003802     30.17555  0.00000000
+3.  SHUTDOWN                      -0.14875401   0.03786344     -3.92870  0.00010731
+
+
+
+@regactfit
+@regcrits
+
+Information Criteria
+AIC          -3.017
+SBC          -2.966
+Hannan-Quinn -2.996
+(log) FPE    -3.017
+
+*forecasting
+UFORECAST(FROM=2023:12,TO=2024:05,STDERRS=CGRSTD,PRINT) CGRFORE
+
+ Entry      LEMP
+ 2023:12 12.81036693
+ 2024:01 12.81151414
+ 2024:02 12.81266134
+ 2024:03 12.81380855
+ 2024:04 12.81495576
+ 2024:05 12.81610297
+
+*converting from logs into levels
+SET CGRFORELEVEL 2023:12 2024:05 = exp(cgrfore)
+*print our levels into the program
+print 2023:12 2024:05 cgrforelevel
+
+
+ ENTRY     CGRFORELEVEL
+ 2023:12   365992.063337
+ 2024:01   366412.173319
+ 2024:02   366832.765531
+ 2024:03   367253.840527
+ 2024:04   367675.398860
+ 2024:05   368097.441086
+
+
+SET CGRCIHI 2023:12 2024:05 = cgrfore+1.96*cgrstd
+SET CGRCILO 2023:12 2024:05 = cgrfore-1.96*cgrstd
+SET CGRCIHILEVEL 2023:12 2024:05 = exp(cgrcihi)
+SET CGRCILOLEVEL 2023:12 2024:05 = exp(cgrcilo)
+*graph of CGR forecast and confidence intervals
+GRAPH(STYLE=LINE,HEADER="Constant Growth ") 3
+# CGRFORELEVEL
+# CGRCIHILEVEL
+# CGRCILOLEVEL
+***within sample forecasting
+*so we can use the cubic model
+LINREG(DEFINE=TRUNCMODEL) EMP * 2023:05
+# Constant TIME SHUTDOWN TIMESQ TIMECBD
+
+Linear Regression - Estimation by Least Squares
+Dependent Variable EMP
+Monthly Data From 2000:01 To 2023:05
+Usable Observations                       281
+Degrees of Freedom                        276
+Centered R^2                        0.8208180
+R-Bar^2                             0.8182212
+Uncentered R^2                      0.9980027
+Mean of Dependent Variable       310231.75445
+Std Error of Dependent Variable   32996.28656
+Standard Error of Estimate        14068.14045
+Sum of Squared Residuals          54623870903
+Regression F(4,276)                  316.0834
+Significance Level of F             0.0000000
+Log Likelihood                     -3080.2179
+Durbin-Watson Statistic                0.0720
+
+    Variable                        Coeff      Std Error      T-Stat      Signif
+************************************************************************************
+1.  Constant                      270688.5887    3403.1932     79.53959  0.00000000
+2.  TIME                             314.2263     104.3586      3.01102  0.00284479
+3.  SHUTDOWN                      -51847.7824   10062.8959     -5.15237  0.00000049
+4.  TIMESQ                            -1.7052       0.8591     -1.98484  0.04815265
+5.  TIMECBD                            0.0073       0.0020      3.64104  0.00032417
+
+*forecasting the last 6 months
+UFORECAST(FROM=2023:06,TO=2023:11,EQUATION=TRUNCMODEL,STDERRS=WITHINSTD,PRINT) WITHINFORE
+
+ Entry       EMP
+ 2023:06 387184.9227
+ 2023:07 388281.1158
+ 2023:08 389386.2772
+ 2023:09 390500.4504
+ 2023:10 391623.6794
+ 2023:11 392756.0078
+
+*creating squared forecast errors
+SET TRUNFORERRORSSQD 2023:06 2023:11 = (emp-withinfore)^2
+STATS TRUNFORERRORSSQD
+
+Statistics on Series TRUNFORERRORSSQD
+Monthly Data From 2023:06 To 2023:11
+Observations                       6
+Sample Mean          40369825.794095      Variance              1369642152075547.750000
+Standard Error       37008676.713381      SE of Sample Mean             15108729.000568
+t-Statistic (Mean=0)        2.671954      Signif Level (Mean=0)                0.044245
+Skewness                    0.550042      Signif Level (Sk=0)                  0.681823
+Kurtosis (excess)          -1.058602      Signif Level (Ku=0)                  0.796197
+Jarque-Bera                 0.582706      Signif Level (JB=0)                  0.747252
+
+LINREG(DEFINE=TRUNC2ND) EMP * 2023:05
+# Constant TIME SHUTDOWN TIMESQ
+
+Linear Regression - Estimation by Least Squares
+Dependent Variable EMP
+Monthly Data From 2000:01 To 2023:05
+Usable Observations                       281
+Degrees of Freedom                        277
+Centered R^2                        0.8122113
+R-Bar^2                             0.8101775
+Uncentered R^2                      0.9979068
+Mean of Dependent Variable       310231.75445
+Std Error of Dependent Variable   32996.28656
+Standard Error of Estimate        14376.02754
+Sum of Squared Residuals          57247636506
+Regression F(3,277)                  399.3541
+Significance Level of F             0.0000000
+Log Likelihood                     -3086.8095
+Durbin-Watson Statistic                0.0697
+
+    Variable                        Coeff      Std Error      T-Stat      Signif
+************************************************************************************
+1.  Constant                      278952.3069    2591.3675    107.64676  0.00000000
+2.  TIME                             -34.3440      42.4519     -0.80901  0.41920333
+3.  SHUTDOWN                      -52720.3788   10280.2099     -5.12834  0.00000055
+4.  TIMESQ                             1.3793       0.1460      9.44827  0.00000000
+
+*getting the forecasts
+UFORECAST(FROM=2023:06,TO=2023:11,EQUATION=TRUNC2ND,PRINT) TRUNC2NDFORE
+
+ Entry       EMP
+ 2023:06 378953.3382
+ 2023:07 379698.2886
+ 2023:08 380445.9977
+ 2023:09 381196.4653
+ 2023:10 381949.6915
+ 2023:11 382705.6762
+
+SET TRUN2ndFORERRORSSQD 2023:06 2023:11 = (emp-trunc2ndfore)^2
+STATS TRUN2NDFORERRORS
+
+Statistics on Series TRUN2NDFORERRORS
+Monthly Data From 2023:06 To 2023:11
+Observations                       6
+Sample Mean          17738408.586733      Variance              348747390820834.500000
+Standard Error       18674779.538748      SE of Sample Mean             7623946.821483
+t-Statistic (Mean=0)        2.326670      Signif Level (Mean=0)               0.067491
+Skewness                    0.650593      Signif Level (Sk=0)                 0.627731
+Kurtosis (excess)          -1.313681      Signif Level (Ku=0)                 0.748585
+Jarque-Bera                 0.854711      Signif Level (JB=0)                 0.652232
+
+*MSE of forecasts are much lower in the 3rd degree than the 2nd degree
+
+
+*****February 7th starts today******
+*modelling in annual differences
+*new annual difference variable, ademp
+DIFF(SDIFFS=1) EMP / ADEMP
+GRAPH(STYLE=LINE,HEADER="Annual Differenced employment") 1
+# ADEMP
+DIFF(SDIFFS=1) SHUTDOWN * 2024:05 ADSHUTDOWN
+LINREG ADEMP
+# Constant TIME TIMESQ ADSHUTDOWN
+
+Linear Regression - Estimation by Least Squares
+Dependent Variable ADEMP
+Monthly Data From 2001:01 To 2023:11
+Usable Observations                       275
+Degrees of Freedom                        271
+Centered R^2                        0.3035367
+R-Bar^2                             0.2958267
+Uncentered R^2                      0.3997324
+Mean of Dependent Variable        5089.436364
+Std Error of Dependent Variable  12736.653164
+Standard Error of Estimate       10687.966703
+Sum of Squared Residuals          30957043336
+Regression F(3,271)                   39.3696
+Significance Level of F             0.0000000
+Log Likelihood                     -2939.3337
+Durbin-Watson Statistic                0.1994
+
+    Variable                        Coeff      Std Error      T-Stat      Signif
+************************************************************************************
+1.  Constant                       6826.77489   2308.73466      2.95693  0.00338098
+2.  TIME                            -73.89063     35.26025     -2.09558  0.03704745
+3.  TIMESQ                            0.32450      0.11438      2.83698  0.00489812
+4.  ADSHUTDOWN                   -53364.14606   5345.98570     -9.98210  0.00000000
+
+
+Linear Regression - Estimation by Least Squares
+Dependent Variable ADEMP
+Monthly Data From 2001:01 To 2023:11
+Usable Observations                       275
+Degrees of Freedom                        271
+Centered R^2                        0.3035367
+R-Bar^2                             0.2958267
+Uncentered R^2                      0.3997324
+Mean of Dependent Variable        5089.436364
+Std Error of Dependent Variable  12736.653164
+Standard Error of Estimate       10687.966703
+Sum of Squared Residuals          30957043336
+Regression F(3,271)                   39.3696
+Significance Level of F             0.0000000
+Log Likelihood                     -2939.3337
+Durbin-Watson Statistic                0.1994
+
+    Variable                        Coeff      Std Error      T-Stat      Signif
+************************************************************************************
+1.  Constant                       6826.77489   2308.73466      2.95693  0.00338098
+2.  TIME                            -73.89063     35.26025     -2.09558  0.03704745
+3.  TIMESQ                            0.32450      0.11438      2.83698  0.00489812
+4.  ADSHUTDOWN                   -53364.14606   5345.98570     -9.98210  0.00000000
+
+@regactfit
+@regcrits
+
+Information Criteria
+AIC          21.413
+SBC          21.479
+Hannan-Quinn 21.440
+(log) FPE    21.413
+
+LINREG ADEMP
+# Constant ADSHUTDOWN
+
+Linear Regression - Estimation by Least Squares
+Dependent Variable ADEMP
+Monthly Data From 2001:01 To 2023:11
+Usable Observations                       275
+Degrees of Freedom                        273
+Centered R^2                        0.2614062
+R-Bar^2                             0.2587007
+Uncentered R^2                      0.3634210
+Mean of Dependent Variable        5089.436364
+Std Error of Dependent Variable  12736.653164
+Standard Error of Estimate       10966.097674
+Sum of Squared Residuals          32829696407
+Regression F(1,273)                   96.6213
+Significance Level of F             0.0000000
+Log Likelihood                     -2947.4095
+Durbin-Watson Statistic                0.1901
+
+    Variable                        Coeff      Std Error      T-Stat      Signif
+************************************************************************************
+1.  Constant                       5089.43636    661.28057      7.69633  0.00000000
+2.  ADSHUTDOWN                   -53896.25000   5483.04884     -9.82961  0.00000000
+
+@regcrits
+
+Information Criteria
+AIC          21.458
+SBC          21.497
+Hannan-Quinn 21.473
+(log) FPE    21.458
+
+*second degree trend
+UFORECAST(FROM=2023:12,TO=2024:05,STDERRS=ADSTD,PRINT) ADFORE
+
+ Entry      ADEMP
+ 2023:12 5089.436364
+ 2024:01 5089.436364
+ 2024:02 5089.436364
+ 2024:03 5089.436364
+ 2024:04 5089.436364
+ 2024:05 5089.436364
+
+UFORECAST(FROM=2023:12,TO=2024:05,STDERRS=ADSTD,PRINT) ADFORE
+
+ Entry      ADEMP
+ 2023:12 12461.62145
+ 2024:01 12574.96745
+ 2024:02 12688.96246
+ 2024:03 12803.60647
+ 2024:04 12918.89948
+ 2024:05 13034.84149
+
+SET ADFORELEVELS 2023:12 2024:05 = adfore+emp{12}
+*graphing all three forecasts on the same graph
+GRAPH(STYLE=LINE,HEADER="Three forecasts of Sarasota Employment",KEY=ATTACHED) 3
+# EMPFORE
+# CGRFORELEVEL
+# ADFORELEVELS
+GRAPH(STYLE=LINE,HEADER="Employment in Sarasoata County",KEY=ATTACHED) 1
+# EMP
+GRAPH(STYLE=LINE,KEY=ATTACHED) 0
+*graph a 5 year inteval, say 2002 - 2007
+SET GRAPEMP 2002:01 2007:12 = emp*1
+GRAPH(STYLE=LINE,HEADER="Sarasota employment 2002-07",KEY=ATTACHED) 1
+# GRAPEMP
+
+
+****Februry 12 starts here*****
+SEASONAL DEC
+SET NOV = DEC{-1}
+Set OCT = DEC{-2}
+SET SEP = DEC{-3}
+SET AUG = DEC{-4}
+Set JUL = DEC{-5}
+SET JUN = DEC{-6}
+Set MAY = DEC{-7}
+SET APR = DEC{-8}
+SET MAR = DEC{-9}
+Set FEB = DEC{-10}
+SET JAN = DEC{-11}
+
+*simploe OLS regression to check for seasonality
+LINREG EMP
+# SHUTDOWN DEC NOV OCT SEP AUG JUL JUN MAY APR MAR FEB JAN
+
+Linear Regression - Estimation by Least Squares
+Dependent Variable EMP
+Monthly Data From 2000:01 To 2023:11
+Usable Observations                       287
+Degrees of Freedom                        274
+Centered R^2                        0.0033418
+R-Bar^2                            -0.0403074
+Uncentered R^2                      0.9881008
+Mean of Dependent Variable       311780.65505
+Std Error of Dependent Variable   34332.15611
+Standard Error of Estimate        35017.24123
+Sum of Squared Residuals          3.35981e+11
+Regression F(12,274)                   0.0766
+Significance Level of F             0.9999903
+Log Likelihood                     -3403.6355
+Durbin-Watson Statistic                0.0133
+
+    Variable                        Coeff      Std Error      T-Stat      Signif
+************************************************************************************
+1.  SHUTDOWN                      -10944.2174   25293.4828     -0.43269  0.66558093
+2.  DEC                           312635.7391    7301.5995     42.81743  0.00000000
+3.  NOV                           314086.8750    7147.8644     43.94136  0.00000000
+4.  OCT                           314216.2083    7147.8644     43.95945  0.00000000
+5.  SEP                           312856.3750    7147.8644     43.76921  0.00000000
+6.  AUG                           311688.7083    7147.8644     43.60585  0.00000000
+7.  JUL                           311696.7917    7147.8644     43.60698  0.00000000
+8.  JUN                           312264.6250    7147.8644     43.68642  0.00000000
+9.  MAY                           312615.4257    7225.1409     43.26773  0.00000000
+10. APR                           309851.0091    7225.1409     42.88512  0.00000000
+11. MAR                           312386.7500    7147.8644     43.70351  0.00000000
+12. FEB                           310114.0417    7147.8644     43.38555  0.00000000
+13. JAN                           307902.9583    7147.8644     43.07622  0.00000000
+
+*no real evidence of seasonality here - very similar coefficients, really small
+*R squared
+*let's make sure that it's not the time trend causing this
+LINREG EMP / THIRDDEGREERESID
+# SHUTDOWN Constant TIME TIMESQ TIMECBD
+
+Linear Regression - Estimation by Least Squares
+Dependent Variable EMP
+Monthly Data From 2000:01 To 2023:11
+Usable Observations                       287
+Degrees of Freedom                        282
+Centered R^2                        0.8374142
+R-Bar^2                             0.8351080
+Uncentered R^2                      0.9980589
+Mean of Dependent Variable       311780.65505
+Std Error of Dependent Variable   34332.15611
+Standard Error of Estimate        13941.22130
+Sum of Squared Residuals          54808857687
+Regression F(4,282)                  363.1173
+Significance Level of F             0.0000000
+Log Likelihood                     -3143.4410
+Durbin-Watson Statistic                0.0718
+
+    Variable                        Coeff      Std Error      T-Stat      Signif
+************************************************************************************
+1.  SHUTDOWN                      -51490.2610    9962.8533     -5.16822  0.00000045
+2.  Constant                      271116.2641    3336.7046     81.25270  0.00000000
+3.  TIME                             292.0284     100.2226      2.91380  0.00385660
+4.  TIMESQ                            -1.4725       0.8080     -1.82235  0.06946084
+5.  TIMECBD                            0.0067       0.0018      3.60988  0.00036242
+
+@regactfit
+*running a seasonal regression on our residuals
+LINREG THIRDDEGREERESID
+# DEC NOV OCT SEP AUG JUL JUN MAY APR MAR FEB JAN
+
+Linear Regression - Estimation by Least Squares
+Dependent Variable THIRDDEGREERESID
+Monthly Data From 2000:01 To 2023:11
+Usable Observations                       287
+Degrees of Freedom                        275
+Centered R^2                        0.0080132
+R-Bar^2                            -0.0316663
+Uncentered R^2                      0.0080132
+Mean of Dependent Variable           -0.00000
+Std Error of Dependent Variable   13843.38696
+Standard Error of Estimate        14060.86322
+Sum of Squared Residuals          54369665482
+Regression F(11,275)                   0.2019
+Significance Level of F             0.9974149
+Log Likelihood                     -3142.2865
+Durbin-Watson Statistic                0.0579
+
+    Variable                        Coeff      Std Error      T-Stat      Signif
+************************************************************************************
+1.  DEC                           1237.018347  2931.892655      0.42192  0.67341450
+2.  NOV                           -237.975913  2870.161686     -0.08291  0.93398043
+3.  OCT                            324.183379  2870.161686      0.11295  0.91015299
+4.  SEP                           -605.789618  2870.161686     -0.21106  0.83299316
+5.  AUG                          -1346.521635  2870.161686     -0.46914  0.63933781
+6.  JUL                           -914.389401  2870.161686     -0.31858  0.75028333
+7.  JUN                             74.647019  2870.161686      0.02601  0.97926986
+8.  MAY                           2533.263438  2870.161686      0.88262  0.37821224
+9.  APR                            184.478042  2870.161686      0.06427  0.94879840
+10. MAR                           1443.705767  2870.161686      0.50301  0.61536335
+11. FEB                           -418.783366  2870.161686     -0.14591  0.88409986
+12. JAN                          -2222.293630  2870.161686     -0.77427  0.43943351
+
+*No evidence of seasonality in the residuals (i.e., the detrended model)
+@regactfit
